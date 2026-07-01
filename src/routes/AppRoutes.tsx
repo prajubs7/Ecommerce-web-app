@@ -11,6 +11,7 @@ import VendorDashboardPage from '../features/vendor-dashboard/VendorDashboardPag
 import VendorPendingPage from '../features/vendor-dashboard/VendorPendingPage';
 import AdminDashboardPage from '../features/admin-dashboard/AdminDashboardPage';
 import { ProtectedRoute } from './ProtectedRoute';
+import HomePage from '../features/home/HomePage';
 
 export default function AppRoutes() {
   return (
@@ -19,7 +20,10 @@ export default function AppRoutes() {
       <CartDrawer />
       <Routes>
         {/* Public */}
-        <Route path="/" element={<ProductListPage />} />
+        {/* <Route path="/" element={<ProductListPage />} /> */}
+       <Route path="/" element={<HomePage />} />
+<Route path="/products" element={<ProductListPage />} />   {/* ← this was missing */}
+<Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
