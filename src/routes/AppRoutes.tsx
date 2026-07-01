@@ -21,9 +21,9 @@ export default function AppRoutes() {
       <Routes>
         {/* Public */}
         {/* <Route path="/" element={<ProductListPage />} /> */}
-       <Route path="/" element={<HomePage />} />
-<Route path="/products" element={<ProductListPage />} />   {/* ← this was missing */}
-<Route path="/products/:id" element={<ProductDetailPage />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/products" element={<ProductListPage />} />  
+        <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
