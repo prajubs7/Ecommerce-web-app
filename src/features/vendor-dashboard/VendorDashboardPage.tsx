@@ -17,20 +17,21 @@ import {
   IconButton,
   Stack,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { useAppSelector } from '../../store/hooks';
-import { useProducts, useDeleteProduct } from '../../api/products';
-import { useVendorOrders } from '../../api/orders';
+import { Add as AddIcon } from '@mui/icons-material';
+import { Edit as EditOutlineIcon } from '@mui/icons-material';
+import { DeleteOutline as DeleteOutlineIcon } from '@mui/icons-material';
+import { useDeleteProduct, useProducts } from '../../hooks/useProducts';
+import { useVendorOrders } from '../../hooks/useOrders';
+import { useAuth } from '../../hooks/useAuth';
 import ProductFormDialog from './ProductFormDialog';
 import type { Product } from '../../types/database.types';
+
 
 export default function VendorDashboardPage() {
   const [tab, setTab] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const profile = useAppSelector((state) => state.auth.profile);
+  const { profile } = useAuth();
   const vendorId = profile?.id;
 
   const { data: products, isLoading: productsLoading } = useProducts({ vendorId });
@@ -123,7 +124,7 @@ export default function VendorDashboardPage() {
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                         <IconButton size="small" onClick={() => openEditForm(p)}>
-                          <EditOutlinedIcon fontSize="small" />
+                          <EditOutlineIcon fontSize="small" />
                         </IconButton>
                         <IconButton size="small" onClick={() => handleDelete(p.id)}>
                           <DeleteOutlineIcon fontSize="small" />

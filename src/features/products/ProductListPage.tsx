@@ -14,11 +14,12 @@ import {
   CardMedia,
   CardContent,
 } from "@mui/material";
-import { useProducts, type ProductFilters } from "../../api/products";
-import { useCategories } from "../../api/categories";
-import { useDebounce } from "../../hooks/useDebounce";
+import { useProducts } from '../../hooks/useProducts';
+import { useDebounce } from '../../hooks/useDebounce';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from "../../store/hooks";
+import { useCategories } from "../../hooks/useCategories";
+import type { ProductFilters } from "../../types/product.types";
 
 const COLORS = ["black", "white", "silver", "red", "blue"]; // could come from DB later
 

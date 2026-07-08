@@ -4,7 +4,8 @@ import { Box, Button, Container, TextField, Typography, Alert, Link as MuiLink }
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { signIn } from '../../api/auth';
+import { AuthService } from '../../service/AuthService';
+
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -24,7 +25,7 @@ export default function LoginPage() {
   const onSubmit = async (formData: FormData) => {
     setServerError(null);
     try {
-      await signIn(formData.email, formData.password);
+      await AuthService.signIn(formData.email, formData.password);
       navigate('/');
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Login failed');
