@@ -16,6 +16,7 @@ export interface Product {
 }
 
 export interface ProductFilters {
+  userId?: string;
   search?: string;
   categoryId?: string | null;
   vendorId?: string;

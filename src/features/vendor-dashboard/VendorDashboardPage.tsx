@@ -20,7 +20,7 @@ import {
 import { Add as AddIcon } from '@mui/icons-material';
 import { Edit as EditOutlineIcon } from '@mui/icons-material';
 import { DeleteOutline as DeleteOutlineIcon } from '@mui/icons-material';
-import { useDeleteProduct, useProducts } from '../../hooks/useProducts';
+import { useDeleteProduct, useProducts, useVendorProducts } from '../../hooks/useProducts';
 import { useVendorOrders } from '../../hooks/useOrders';
 import { useAuth } from '../../hooks/useAuth';
 import ProductFormDialog from './ProductFormDialog';
@@ -34,7 +34,7 @@ export default function VendorDashboardPage() {
   const { profile } = useAuth();
   const vendorId = profile?.id;
 
-  const { data: products, isLoading: productsLoading } = useProducts({ vendorId });
+  const { data: products, isLoading: productsLoading } = useVendorProducts({ vendorId });
   const { data: orderItems, isLoading: ordersLoading } = useVendorOrders(vendorId);
   const deleteProduct = useDeleteProduct();
 

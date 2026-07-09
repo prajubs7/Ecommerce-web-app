@@ -21,16 +21,28 @@ export const productKeys = {
   detail: (id: string) => [...productKeys.all(), 'detail', id] as const,
 };
 
-export function useProducts(filters: ProductFilters = {}) {
+export function useProducts( filters: ProductFilters = {}) {
   return useQuery({
     queryKey: productKeys.list(filters),
-    queryFn:  () => ProductService.getAll(filters),
+    queryFn:  () => ProductService.getAll( filters),
     // Show previous results while new filters load —
     // prevents loading flicker on every filter change
     placeholderData: (prev) => prev,
     staleTime: 30 * 1000, // 30s — products don't change every second
   });
 }
+
+export function useVendorProducts( filters: ProductFilters = {}) {
+  return useQuery({
+    queryKey: productKeys.list(filters),
+    queryFn: () => ProductService.getVendorProducts( filters),
+    // Show previous results while new filters load —
+    // prevents loading flicker on every filter change
+    placeholderData: (prev) => prev,
+    staleTime: 30 * 1000, // 30s — products don't change every second
+  });
+}
+
 
 export function useProduct(id: string | undefined) {
   return useQuery({

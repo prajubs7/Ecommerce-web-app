@@ -23,13 +23,61 @@ export class ProductService {
    * Supabase query is built dynamically based on what filters are provided.
    * Only adds query clauses that are actually needed — keeps SQL clean.
    */
-  static async getAll(filters: ProductFilters = {}): Promise<Product[]> {
+  static async getAll( filters: ProductFilters = {}): Promise<Product[]> {
     let query = supabase.from('products').select('*');
 
     // Default: public catalog sees only active products.
     // Vendor dashboard passes status explicitly to see drafts.
     query = query.eq('status', filters.status ?? 'active');
+    
+    // Vendor scoping — vendor sees only their own products
+    if (filters.vendorId) {
+      query = query.neq('vendor_id', filters.userId);
+    }
 
+    if (filters.categoryId) {
+      query = query.eq('category_id', filters.categoryId);
+    }
+
+    if (filters.minPrice !== undefined) {
+      query = query.gte('price', filters.minPrice);
+    }
+
+    if (filters.maxPrice !== undefined) {
+      query = query.lte('price', filters.maxPrice);
+    }
+
+    // Search in metadata jsonb column using Postgres ->> operator
+    if (filters.search?.trim()) {
+      const term = filters.search.trim();
+      query = query.or(`title.ilike.%${term}%,description.ilike.%${term}%`);
+    }
+
+    // Sorting
+    switch (filters.sortBy) {
+      case 'price_asc':
+        query = query.order('price', { ascending: true });
+        break;
+      case 'price_desc':
+        query = query.order('price', { ascending: false });
+        break;
+      default:
+        query = query.order('created_at', { ascending: false });
+    }
+
+    const { data, error } = await query;
+    if (error) throw new Error(`ProductService.getAll: ${error.message}`);
+    return data as Product[];
+  }
+
+
+  static async getVendorProducts( filters: ProductFilters = {}): Promise<Product[]> {
+    let query = supabase.from('products').select('*');
+
+    // Default: public catalog sees only active products.
+    // Vendor dashboard passes status explicitly to see drafts.
+    query = query.eq('status', filters.status ?? 'active');
+   
     // Vendor scoping — vendor sees only their own products
     if (filters.vendorId) {
       query = query.eq('vendor_id', filters.vendorId);
@@ -100,6 +148,7 @@ export class ProductService {
     return data as Product;
   }
 
+  
   /**
    * Update an existing product.
    * Partial update — only sends changed fields to Supabase.

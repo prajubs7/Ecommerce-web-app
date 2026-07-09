@@ -1,42 +1,92 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
-  Box,
-  Container,
-  Grid,
-  TextField,
-  MenuItem,
-  Slider,
-  Typography,
-  Stack,
-  Button,
-  CardActionArea,
-  Card,
-  CardMedia,
-  CardContent,
+  Box, Container, Grid, TextField, MenuItem,
+  Typography, Stack, Button, Alert, CircularProgress,
+  Chip, InputAdornment,
 } from "@mui/material";
+import SearchIcon from '@mui/icons-material/Search';
 import { useProducts } from '../../hooks/useProducts';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from "../../store/hooks";
-import { useCategories } from "../../hooks/useCategories";
-import type { ProductFilters } from "../../types/product.types";
+import { useCategories } from '../../hooks/useCategories';
+import { addItem } from '../../store/cartSlice';
+import { setCartDrawerOpen } from '../../store/uiSlice';
+import ProductCard from './ProductCard';
+import { useAuth } from "../../hooks/useAuth";
 
-const COLORS = ["black", "white", "silver", "red", "blue"]; // could come from DB later
+const SORT_OPTIONS = [
+  { value: 'newest',     label: 'Newest first'        },
+  { value: 'price_asc',  label: 'Price: Low to High'  },
+  { value: 'price_desc', label: 'Price: High to Low'  },
+] as const;
+
+type SortOption = typeof SORT_OPTIONS[number]['value'];
 
 export default function ProductListPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { userId } = useAuth();
 
-  // Raw input state — instant UI feedback
-  const [searchInput, setSearchInput] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [color, setColor] = useState("");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
+  // ── Filter state ──────────────────────────────────────────────
+  const [searchInput, setSearchInput] = useState('');
+  const [sortBy, setSortBy]           = useState<SortOption>('newest');
+  const [maxPrice, setMaxPrice]       = useState<number | undefined>();
+  const [categoryId, setCategoryId]   = useState('');
+  // '' means "all categories" — the default "show everything" state
 
-  // Only the search text needs debouncing — dropdowns/sliders
-  // don't fire on every pixel, they fire on commit (onChangeCommitted)
   const debouncedSearch = useDebounce(searchInput, 400);
+  const isTyping        = searchInput !== debouncedSearch;
+
+  // ── Categories for dropdown ───────────────────────────────────
+  const { data: categories } = useCategories();
+
+  const categoryOptions = useMemo(() => [
+    { value: '', label: 'All categories' },
+    ...(categories?.map((c) => ({ value: c.id, label: c.name })) ?? []),
+  ], [categories]);
+  // useMemo here: categories array is stable between renders, so this
+  // derived array won't be re-created on every keystroke in search box
+
+  // The full Category object for the currently selected id (for URL sync)
+  const selectedCategory = useMemo(
+    () => categories?.find((c) => c.id === categoryId) ?? null,
+    [categories, categoryId]
+  );
+
+  // ── Effect 1: Read category from URL on first load ────────────
+  // Runs when categories load OR when the URL ?category= param changes.
+  // Converts URL slug → internal category id.
+  //
+  // Senior dev note: we depend on searchParams.get('category') (a string)
+  // NOT on searchParams itself (object reference changes every render).
+  // This is the key fix that prevents the infinite loop.
+  const categorySlugFromUrl = searchParams.get('category');
+
+  useEffect(() => {
+    if (!categories || !categorySlugFromUrl) {
+      // No slug in URL → keep showing all products (categoryId = '')
+      return;
+    }
+
+    const matched = categories.find((c) => c.slug === categorySlugFromUrl);
+
+    // Only update state if it's actually different —
+    // avoids triggering Effect 2 unnecessarily
+    if (matched && matched.id !== categoryId) {
+      setCategoryId(matched.id);
+    }
+  }, [categories, categorySlugFromUrl]);
+  
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (selectedCategory) next.set('category', selectedCategory.slug);
+      else next.delete('category');
+      return next;
+    }, { replace: true });
+  }, [selectedCategory]);
 
   useEffect(() => {
     setSearchParams((prev) => {
@@ -45,239 +95,297 @@ export default function ProductListPage() {
       else next.delete('q');
       return next;
     }, { replace: true });
-  }, [debouncedSearch, searchParams]);
+  }, [debouncedSearch]);
 
-  // Build ONE filters object — this is the key pattern.
-  // useMemo prevents creating a new object reference every render,
-  // which matters because `filters` is the React Query cache key.
-  // Without this, a new {} reference each render would look like a
-  // "new" query key to React Query even when values are identical.
- const filters: ProductFilters = useMemo(
-    () => ({
-      search: debouncedSearch || undefined,
-      categoryId: categoryId || undefined,
-      color: color || undefined,
-      minPrice: priceRange[0],
-      maxPrice: priceRange[1],
-    }),
-    [debouncedSearch, categoryId, color, priceRange, status]
-  );
+  // ── Server state ─────────────────────────────────────────────
+  // Key insight: categoryId = '' → undefined → Supabase ignores the filter
+  // categoryId = 'some-uuid' → filters by that category
+  const { data: products, isLoading, isError, isFetching } = useProducts({
+    userId: userId || '',
+    search: debouncedSearch   || undefined,
+    sortBy,
+    maxPrice,
+    categoryId: categoryId || undefined,
+  });
 
-  const { data: products, isLoading, isFetching } = useProducts(filters);
-  const { data: categories } = useCategories();
+  console.log('ProductListPage render', products, userId);
 
-  const clearFilters = () => {
-    setSearchInput("");
-    setCategoryId("");
-    setColor("");
-    setPriceRange([0, 5000]);
-  };
+  // ── useMemo: derived stats from products ──────────────────────
+  const stats = useMemo(() => {
+    if (!products?.length) return null;
 
-  const activeFilterCount = [categoryId, color, debouncedSearch].filter(
-    Boolean,
-  ).length;
+    const prices   = products.map((p) => p.price);
+    const inStock  = products.filter((p) => p.stock > 0).length;
+    const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+
+
+    return {
+      count: products.length,
+      inStock,
+      avgPrice,
+      minPrice: Math.min(...prices),
+      maxPrice: Math.max(...prices),
+    };
+  }, [products]);
+
+  // ── useCallback: stable handlers for React.memo children ─────
+  const handleViewDetail = useCallback((id: string) => {
+    navigate(`/products/${id}`);
+  }, [navigate]);
+
+  const handleAddToCart = useCallback((id: string) => {
+    const product = products?.find((p) => p.id === id);
+    if (!product) return;
+
+    dispatch(addItem({
+      productId: product.id,
+      title:     product.title,
+      price:     product.price,
+      image:     product.images?.[0] ?? null,
+      vendorId:  product.vendor_id,
+      maxStock:  product.stock,
+    }));
+    dispatch(setCartDrawerOpen(true));
+  }, [products, dispatch]);
+
+  // ── Clear all filters ────────────────────────────────────────
+  const handleClearFilters = useCallback(() => {
+    setSearchInput('');
+    setCategoryId('');
+    setMaxPrice(undefined);
+    setSortBy('newest');
+  }, []);
+
+  const hasActiveFilters = !!(searchInput || categoryId || maxPrice);
+
+  // Dev tracking
+  // if (import.meta.env.DEV) renderTracker.track('ProductListPage');
 
   return (
     <Container sx={{ mt: 4, mb: 8 }}>
-      <Typography variant="h4" gutterBottom>
-        Products
+      <Typography variant="h4" fontWeight={700} gutterBottom>
+        Shop
+        {/* Show active category as subtitle */}
+        {/* {selectedCategory && (
+          <Typography
+            component="span"
+            variant="h6"
+            color="text.secondary"
+            fontWeight={400}
+            sx={{ ml: 1.5 }}
+          >
+            / {selectedCategory.name}
+          </Typography>
+        )} */}
       </Typography>
 
-      <Grid container spacing={3}>
-        {/* Filter sidebar */}
-        <Grid item xs={12} md={3}>
-          <Stack spacing={3}>
-            <TextField
-              label="Search"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              fullWidth
+      {/* ── Filters row ──────────────────────────────────────── */}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{ mb: 3 }}
+        flexWrap="wrap"
+        useFlexGap
+      >
+        <TextField
+          placeholder="Search products…"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          sx={{ minWidth: 260 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+            endAdornment: (isTyping || isFetching) ? (
+              <InputAdornment position="end">
+                <CircularProgress size={14} />
+              </InputAdornment>
+            ) : null,
+          }}
+        />
+
+        <TextField
+          select
+          label="Category"
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          {categoryOptions.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          select
+          label="Sort by"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as SortOption)}
+          sx={{ minWidth: 180 }}
+        >
+          {SORT_OPTIONS.map((o) => (
+            <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          label="Max price (₹)"
+          type="number"
+          value={maxPrice ?? ''}
+          onChange={(e) =>
+            setMaxPrice(e.target.value ? Number(e.target.value) : undefined)
+          }
+          sx={{ minWidth: 160 }}
+          inputProps={{ min: 0 }}
+        />
+
+        {hasActiveFilters && (
+          <Button variant="outlined" onClick={handleClearFilters}>
+            Clear filters
+          </Button>
+        )}
+      </Stack>
+
+      {/* ── Active filter chips ───────────────────────────────── */}
+      {hasActiveFilters && (
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+          {selectedCategory && (
+            <Chip
+              label={`Category: ${selectedCategory.name}`}
+              onDelete={() => setCategoryId('')}
+              color="primary"
               size="small"
             />
-
-            <TextField
-              select
-              label="Category"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              fullWidth
-              size="small"
-            >
-              <MenuItem value="">All Categories</MenuItem>
-              {categories?.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.name}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
-              select
-              label="Color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              fullWidth
-              size="small"
-            >
-              <MenuItem value="">Any Color</MenuItem>
-              {COLORS.map((c) => (
-                <MenuItem key={c} value={c}>
-                  {c[0].toUpperCase() + c.slice(1)}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <Box>
-              <Typography variant="body2" gutterBottom>
-                Price: ₹{priceRange[0]} – ₹{priceRange[1]}
-              </Typography>
-              <Slider
-                value={priceRange}
-                onChange={(_, val) => setPriceRange(val as [number, number])}
-                min={0}
-                max={5000}
-                step={100}
-                // onChangeCommitted vs onChange matters here:
-                // onChange fires on every pixel of drag (would spam queries),
-                // but React Query only re-runs when `filters` changes, which
-                // only happens when priceRange state updates. Using local
-                // state for the slider + committing on change is fine since
-                // the object memoizes — but for expensive queries you'd want
-                // to debounce this too, same pattern as search.
-              />
-            </Box>
-
-            {activeFilterCount > 0 && (
-              <Button size="small" onClick={clearFilters}>
-                Clear filters ({activeFilterCount})
-              </Button>
-            )}
-          </Stack>
-        </Grid>
-
-        {/* Results */}
-        <Grid item xs={12} md={9}>
-          {isFetching && (
-            <Typography variant="caption" color="text.secondary">
-              Updating…
-            </Typography>
           )}
-
-          {!isLoading && products?.length === 0 && (
-            <Typography color="text.secondary">
-              No products match your filters.
-            </Typography>
+          {debouncedSearch && (
+            <Chip
+              label={`Search: "${debouncedSearch}"`}
+              onDelete={() => setSearchInput('')}
+              size="small"
+            />
           )}
+          {maxPrice && (
+            <Chip
+              label={`Max: ₹${maxPrice.toLocaleString('en-IN')}`}
+              onDelete={() => setMaxPrice(undefined)}
+              size="small"
+            />
+          )}
+        </Stack>
+      )}
 
-       <Grid container spacing={3}>
-         {products?.map((product) => (
-           <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
-             <Card>
-               <CardActionArea onClick={() => navigate(`/products/${product.id}`)}>
-                 <CardMedia
-                   component="img"
-                   height="180"
-                   image={product.images?.[0] ?? 'https://placehold.co/400x300?text=No+Image'}
-                   alt={product.title}
-                 />
-                 <CardContent>
-                   <Typography variant="subtitle1" noWrap>{product.title}</Typography>
-                   <Typography variant="h6" color="secondary.dark">
-                     ${product.price.toFixed(2)}
-                   </Typography>
-                 </CardContent>
-               </CardActionArea>
-             </Card>
-           </Grid>
-         ))}
-       </Grid>
-        </Grid>
+      {/* ── Stats bar ─────────────────────────────────────────── */}
+      {stats && (
+        <Stack direction="row" spacing={1} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
+          <Chip label={`${stats.count} products`} size="small" />
+          <Chip
+            label={`${stats.inStock} in stock`}
+            size="small"
+            color="success"
+            variant="outlined"
+          />
+          <Chip
+            label={`Avg ₹${Math.round(stats.avgPrice).toLocaleString('en-IN')}`}
+            size="small"
+            variant="outlined"
+          />
+          <Chip
+            label={`₹${stats.minPrice.toLocaleString('en-IN')} – ₹${stats.maxPrice.toLocaleString('en-IN')}`}
+            size="small"
+            variant="outlined"
+          />
+        </Stack>
+      )}
+
+      {/* ── Loading / error / empty states ───────────────────── */}
+      {isLoading && (
+        <Box display="flex" justifyContent="center" mt={8}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {isError && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          Failed to load products. Please try again.
+        </Alert>
+      )}
+
+      {!isLoading && !isError && products?.length === 0 && (
+        <Box textAlign="center" mt={8}>
+          <Typography variant="h6" color="text.secondary">
+            No products found
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mt={1}>
+            {selectedCategory
+              ? `No products in "${selectedCategory.name}" yet`
+              : debouncedSearch
+              ? `No results for "${debouncedSearch}"`
+              : 'No products match your filters'}
+          </Typography>
+          {hasActiveFilters && (
+            <Button
+              variant="outlined"
+              sx={{ mt: 2 }}
+              onClick={handleClearFilters}
+            >
+              Clear all filters
+            </Button>
+          )}
+        </Box>
+      )}
+
+      {/* ── Product grid ──────────────────────────────────────── */}
+      <Grid
+        container
+        spacing={3}
+        sx={{
+          opacity: isFetching && !isLoading ? 0.65 : 1,
+          transition: 'opacity 0.2s',
+        }}
+      >
+        {products?.map((product) => (
+          <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
+            <ProductCard
+              id={product.id}
+              title={product.title}
+              price={product.price}
+              image={product.images?.[0] ?? `https://picsum.photos/seed/${product.id}/400/300`}
+              stock={product.stock}
+              brand={(product.metadata as any)?.brand}
+              onViewDetail={handleViewDetail}
+              onAddToCart={handleAddToCart}
+            />
+          </Grid>
+        ))}
       </Grid>
+
+      {/* DEV: render tracker panel ──────────────────────────── */}
+      {/* {import.meta.env.DEV && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 16, left: 16,
+            bgcolor: 'rgba(0,0,0,0.85)',
+            color: 'white',
+            p: 2, borderRadius: 2,
+            fontSize: 12,
+            fontFamily: 'monospace',
+            zIndex: 9999,
+            minWidth: 220,
+          }}
+        >
+          <Box fontWeight={700} mb={1}>🔍 Render tracker</Box>
+          <Box>ProductListPage: {renderTracker.track('ProductListPage')}</Box>
+          <Box>ProductCard total: {renderTracker.track('ProductCard')}</Box>
+          <Box sx={{ mt: 1, opacity: 0.6, fontSize: 11 }}>
+            Type in search → watch counts
+          </Box>
+        </Box>
+      )} */}
     </Container>
   );
 }
-
-// import { useState } from 'react';
-// import {
-//   Container,
-//   Grid,
-//   Card,
-//   CardMedia,
-//   CardContent,
-//   CardActionArea,
-//   Typography,
-//   TextField,
-//   InputAdornment,
-//   CircularProgress,
-//   Alert,
-//   Box,
-// } from '@mui/material';
-// import SearchIcon from '@mui/icons-material/Search';
-// import { useNavigate } from 'react-router-dom';
-// import { useProducts } from '../../api/products';
-
-// export default function ProductListPage() {
-//   const navigate = useNavigate();
-//   const [search, setSearch] = useState('');
-//   const { data: products, isLoading, isError, error } = useProducts({ searchQuery: search });
-
-//   return (
-//     <Container sx={{ mt: 4, mb: 8 }}>
-//       <Typography variant="h4" gutterBottom>Shop</Typography>
-
-//       <TextField
-//         fullWidth
-//         placeholder="Search products…"
-//         value={search}
-//         onChange={(e) => setSearch(e.target.value)}
-//         sx={{ mb: 4, maxWidth: 480 }}
-//         InputProps={{
-//           startAdornment: (
-//             <InputAdornment position="start">
-//               <SearchIcon />
-//             </InputAdornment>
-//           ),
-//         }}
-//       />
-
-//       {isLoading && (
-//         <Box display="flex" justifyContent="center" mt={6}>
-//           <CircularProgress />
-//         </Box>
-//       )}
-
-//       {isError && (
-//         <Alert severity="error">
-//           Couldn't load products: {error instanceof Error ? error.message : 'Unknown error'}
-//         </Alert>
-//       )}
-
-//       {!isLoading && !isError && products?.length === 0 && (
-//         <Typography color="text.secondary">No products match your search.</Typography>
-//       )}
-
-//       <Grid container spacing={3}>
-//         {products?.map((product) => (
-//           <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
-//             <Card>
-//               <CardActionArea onClick={() => navigate(`/products/${product.id}`)}>
-//                 <CardMedia
-//                   component="img"
-//                   height="180"
-//                   image={product.images?.[0] ?? 'https://placehold.co/400x300?text=No+Image'}
-//                   alt={product.title}
-//                 />
-//                 <CardContent>
-//                   <Typography variant="subtitle1" noWrap>{product.title}</Typography>
-//                   <Typography variant="h6" color="secondary.dark">
-//                     ${product.price.toFixed(2)}
-//                   </Typography>
-//                 </CardContent>
-//               </CardActionArea>
-//             </Card>
-//           </Grid>
-//         ))}
-//       </Grid>
-//     </Container>
-//   );
-// }
