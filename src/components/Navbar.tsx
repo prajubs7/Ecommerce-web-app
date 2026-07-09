@@ -3,17 +3,18 @@ import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setCartDrawerOpen } from '../store/uiSlice';
-import { signOut } from '../api/auth';
+import { useAuth } from '../hooks/useAuth';
+import { AuthService } from '../service/AuthService';
 
 export default function Navbar() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { userId, profile } = useAppSelector((state) => state.auth);
+  const { userId, profile } = useAuth();
   const cartCount = useAppSelector((state) => state.cart.items.reduce((n, i) => n + i.quantity, 0));
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+      const handleSignOut = async () => {
+      await AuthService.signOut();
+      navigate('/');
   };
 
   return (

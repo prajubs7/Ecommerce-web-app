@@ -14,7 +14,8 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { signUp } from '../../api/auth';
+import { AuthService } from '../../service/AuthService';
+
 
 const schema = z.object({
   fullName: z.string().min(2, 'Enter your name'),
@@ -41,7 +42,7 @@ export default function SignupPage() {
     console.log("Form data",  formData);
     setServerError(null);
     try {
-      await signUp(formData.email, formData.password, formData.fullName, formData.role);
+      await AuthService.signUp({ email: formData.email, password: formData.password, fullName: formData.fullName, role: formData.role });
       // Vendors land on a "pending approval" notice; customers go straight in.
       navigate(formData.role === 'vendor' ? '/vendor/pending' : '/');
     } catch (err) {

@@ -9,7 +9,7 @@ import {
   Alert,
   Chip,
 } from '@mui/material';
-import { useProduct } from '../../api/products';
+import { useProduct } from '../../hooks/useProducts';
 import { useAppDispatch } from '../../store/hooks';
 import { addItem } from '../../store/cartSlice';
 import { setCartDrawerOpen } from '../../store/uiSlice';
