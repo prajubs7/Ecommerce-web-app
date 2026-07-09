@@ -57,10 +57,15 @@ export function useCreateProduct() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateProductInput) => ProductService.create(input),
-    onSuccess: () => {
-      // Invalidate ALL product lists so any cached filter combination
-      // gets refreshed — new product could appear in multiple filters
+    onSuccess: async (createdProduct) => {
+      // Invalidate cache first so product appears immediately
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+
+      // Then generate embedding in the background
+      // Don't await — don't block the UI
+      ProductService.generateEmbedding(createdProduct.id).catch((err) => {
+        console.warn('Background embedding failed:', err);
+      });
     },
   });
 }
@@ -71,13 +76,18 @@ export function useUpdateProduct() {
     mutationFn: ({ id, updates }: { id: string; updates: UpdateProductInput }) =>
       ProductService.update(id, updates),
     onSuccess: (updatedProduct) => {
-      // Update the specific item in cache immediately (no refetch needed)
+      // Update cache immediately
       queryClient.setQueryData(
         productKeys.detail(updatedProduct.id),
         updatedProduct
       );
-      // Also invalidate lists since price/status change affects list views
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+
+      // Regenerate embedding if title or description changed
+      // (content changed = embedding is stale)
+      ProductService.generateEmbedding(updatedProduct.id).catch((err) => {
+        console.warn('Background embedding regeneration failed:', err);
+      });
     },
   });
 }
