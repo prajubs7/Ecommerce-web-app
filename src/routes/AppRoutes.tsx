@@ -1,50 +1,176 @@
-import { Routes, Route } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import CartDrawer from '../features/cart/CartDrawer';
-import ProductListPage from '../features/products/ProductListPage';
-import ProductDetailPage from '../features/products/ProductDetailPage';
-import LoginPage from '../features/auth/LoginPage';
-import SignupPage from '../features/auth/SignupPage';
-import CheckoutPage from '../features/checkout/CheckoutPage';
-import OrderHistoryPage from '../features/checkout/OrderHistoryPage';
-import VendorDashboardPage from '../features/vendor-dashboard/VendorDashboardPage';
-import VendorPendingPage from '../features/vendor-dashboard/VendorPendingPage';
-import AdminDashboardPage from '../features/admin-dashboard/AdminDashboardPage';
-import { ProtectedRoute } from './ProtectedRoute';
-import HomePage from '../features/home/HomePage';
+import { lazy, Suspense }      from 'react';
+import { Routes, Route }       from 'react-router-dom';
+import Navbar                  from '../components/Navbar';
+import CartDrawer              from '../features/cart/CartDrawer';
+import { ProtectedRoute }      from './ProtectedRoute';
+import {
+  PageLoader,
+  ProductGridSkeleton,
+  DashboardSkeleton,
+  AuthSkeleton,
+} from '../components/PageLoader';
+
+
+// ── Public pages ──────────────────────────────────────────────
+const HomePage = lazy(
+  () => import('../features/home/HomePage')
+);
+const ProductListPage = lazy(
+  () => import('../features/products/ProductListPage')
+);
+const ProductDetailPage = lazy(
+  () => import('../features/products/ProductDetailPage')
+);
+
+// ── Auth pages ────────────────────────────────────────────────
+const LoginPage = lazy(
+  () => import('../features/auth/LoginPage')
+);
+const SignupPage = lazy(
+  () => import('../features/auth/SignupPage')
+);
+
+// ── Customer pages ────────────────────────────────────────────
+const CheckoutPage = lazy(
+  () => import('../features/checkout/CheckoutPage')
+);
+const OrderHistoryPage = lazy(
+  () => import('../features/checkout/OrderHistoryPage')
+);
+
+// ── Vendor pages ──────────────────────────────────────────────
+const VendorDashboardPage = lazy(
+  () => import('../features/vendor-dashboard/VendorDashboardPage')
+);
+const VendorPendingPage = lazy(
+  () => import('../features/vendor-dashboard/VendorPendingPage')
+);
+
+const AdminDashboardPage = lazy(
+  () => import('../features/admin-dashboard/AdminDashboardPage')
+);
+
+const WishlistPage = lazy(
+  () => import('../features/wishlist/WishlistPage')
+);
 
 export default function AppRoutes() {
   return (
     <>
       <Navbar />
       <CartDrawer />
-      <Routes>
-        {/* Public */}
-        {/* <Route path="/" element={<ProductListPage />} /> */}
-        <Route path="/" element={<HomePage />} />
-        <Route path="/products" element={<ProductListPage />} />  
-        <Route path="/products/:id" element={<ProductDetailPage />} />
-        <Route path="/products/:id" element={<ProductDetailPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/vendor/pending" element={<VendorPendingPage />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
 
-        {/* Any authenticated user */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/orders" element={<OrderHistoryPage />} />
-        </Route>
+          {/* ── Public routes ──────────────────────────── */}
+          <Route
+            path="/"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <HomePage />
+              </Suspense>
+            }
+          />
 
-        {/* Vendor only */}
-        <Route element={<ProtectedRoute allowedRoles={['vendor']} />}>
-          <Route path="/vendor" element={<VendorDashboardPage />} />
-        </Route>
+          <Route
+            path="/products"
+            element={
+              <Suspense fallback={<ProductGridSkeleton />}>
+                <ProductListPage />
+              </Suspense>
+            }
+          />
 
-        {/* Admin only */}
-        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-          <Route path="/admin" element={<AdminDashboardPage />} />
-        </Route>
-      </Routes>
+          <Route
+            path="/products/:id"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <ProductDetailPage />
+              </Suspense>
+            }
+          />
+
+          {/* ── Auth routes ────────────────────────────── */}
+          <Route
+            path="/login"
+            element={
+              <Suspense fallback={<AuthSkeleton />}>
+                <LoginPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/signup"
+            element={
+              <Suspense fallback={<AuthSkeleton />}>
+                <SignupPage />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="/vendor/pending"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <VendorPendingPage />
+              </Suspense>
+            }
+          />
+
+          {/* ── Protected: any logged-in user ──────────── */}
+          <Route element={<ProtectedRoute />}>
+            <Route
+              path="/checkout"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <CheckoutPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/orders"
+              element={
+                <Suspense fallback={<DashboardSkeleton />}>
+                  <OrderHistoryPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/wishlist"
+              element={
+                <Suspense fallback={<ProductGridSkeleton />}>
+                  <WishlistPage />
+                </Suspense>
+              }
+            />
+          </Route>
+
+          {/* ── Protected: vendor only ─────────────────── */}
+          <Route element={<ProtectedRoute allowedRoles={['vendor']} />}>
+            <Route
+              path="/vendor"
+              element={
+                <Suspense fallback={<DashboardSkeleton />}>
+                  <VendorDashboardPage />
+                </Suspense>
+              }
+            />
+          </Route>
+
+          {/* ── Protected: admin only ──────────────────── */}
+          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+            <Route
+              path="/admin"
+              element={
+                <Suspense fallback={<DashboardSkeleton />}>
+                  <AdminDashboardPage />
+                </Suspense>
+              }
+            />
+          </Route>
+
+        </Routes>
+      </Suspense>
     </>
   );
 }

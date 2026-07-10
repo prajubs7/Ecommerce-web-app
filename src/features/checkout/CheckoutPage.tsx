@@ -33,10 +33,13 @@ export default function CheckoutPage() {
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const onSubmit = async (address: FormData) => {
+    console.log('Submitting order with address:', address);
     if (!userId) return;
     setOrderError(null);
+    console.log('Placing order with :', address, userId, items);
     try {
-      await placeOrder.mutateAsync({ customerId: userId, items, shippingAddress: address });
+      const res = await placeOrder.mutateAsync({ customerId: userId, items, shippingAddress: address });
+      console.log('Order placed successfully:', res);
       dispatch(clearCart());
       navigate('/orders');
     } catch (err) {
