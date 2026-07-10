@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { PlaceOrderInput } from '../types/order.types';
+import type { OrderStatus, PlaceOrderInput } from '../types/order.types';
 import { OrderService } from '../service/OrderService';
 
 export const orderKeys = {
@@ -43,14 +43,61 @@ export function usePlaceOrder() {
   });
 }
 
+// export function useUpdateOrderStatus() {
+//   const queryClient = useQueryClient();
+//   return useMutation({
+//     mutationFn: ({ orderId, status }: {
+//       orderId: string;
+//       status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
+//     }) => OrderService.updateStatus(orderId, status),
+//     onSuccess: () => {
+//       queryClient.invalidateQueries({ queryKey: orderKeys.all() });
+//     },
+//   });
+// }
+
 export function useUpdateOrderStatus() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ orderId, status }: {
+    mutationFn: ({
+      orderId,
+      status,
+    }: {
       orderId: string;
-      status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
+      status:  OrderStatus;
     }) => OrderService.updateStatus(orderId, status),
-    onSuccess: () => {
+
+    /**
+     * Optimistic update for order status.
+     * Admin sees the status chip change INSTANTLY
+     * instead of waiting for Supabase to respond.
+     */
+    onMutate: async ({ orderId, status }) => {
+
+      await queryClient.cancelQueries({ queryKey: orderKeys.admin() });
+
+      const previousOrders = queryClient.getQueryData(orderKeys.admin());
+
+      queryClient.setQueryData<any[]>(orderKeys.admin(), (old = []) =>
+        old.map((order) =>
+          order.id === orderId
+            ? { ...order, status } // update just the status field
+            : order               // leave all other orders unchanged
+        )
+      );
+
+      return { previousOrders };
+    },
+
+    onError: (_error, _variables, context) => {
+   
+      if (context?.previousOrders) {
+        queryClient.setQueryData(orderKeys.admin(), context.previousOrders);
+      }
+    },
+
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: orderKeys.all() });
     },
   });

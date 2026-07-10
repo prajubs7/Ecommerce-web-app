@@ -4,8 +4,8 @@ import {
   Typography, Paper, List, ListItemButton, ListItemText,
   Chip, Divider, Alert,
 } from '@mui/material';
-import SearchIcon     from '@mui/icons-material/Search';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import SearchIcon from '@mui/icons-material/Search';
+import { AutoAwesome } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useSemanticSearch } from '../../hooks/useSemanticSearch';
 
@@ -52,7 +52,7 @@ export default function SemanticSearchBar() {
           startAdornment: (
             <InputAdornment position="start">
               {isSemantic
-                ? <AutoAwesomeIcon sx={{ color: 'secondary.main', fontSize: 18 }} />
+                ? <AutoAwesome sx={{ color: 'secondary.main', fontSize: 18 }} />
                 : <SearchIcon sx={{ color: 'text.disabled', fontSize: 18 }} />
               }
             </InputAdornment>
@@ -104,7 +104,7 @@ export default function SemanticSearchBar() {
           >
             {isSemantic ? (
               <>
-                <AutoAwesomeIcon sx={{ fontSize: 14, color: 'secondary.dark' }} />
+                <AutoAwesome sx={{ fontSize: 14, color: 'secondary.dark' }} />
                 <Typography variant="caption" fontWeight={700} color="secondary.dark">
                   AI Semantic Search — understanding your intent
                 </Typography>

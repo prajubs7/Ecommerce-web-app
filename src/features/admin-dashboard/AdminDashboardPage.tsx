@@ -1,43 +1,73 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
-  Container, Typography, Tabs, Tab,
-  Table, TableHead, TableRow, TableCell, TableBody,
-  Chip, CircularProgress, Button, Box, Alert,
-} from '@mui/material';
-import { useProducts } from '../../hooks/useProducts';
-import { useAllOrders } from '../../hooks/useOrders';
-import { useAllProfiles, useUpdateVendorStatus } from '../../hooks/useAuth';
-import type { Profile } from '../../types/auth.types';
-import type { OrderStatus } from '../../types/order.types';
+  Container,
+  Typography,
+  Tabs,
+  Tab,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Chip,
+  CircularProgress,
+  Button,
+  Box,
+  Alert,
+  MenuItem,
+  TextField,
+} from "@mui/material";
+import { useProducts } from "../../hooks/useProducts";
+import { useAllOrders, useUpdateOrderStatus } from "../../hooks/useOrders";
+import { useAllProfiles, useUpdateVendorStatus } from "../../hooks/useAuth";
+import type { Profile } from "../../types/auth.types";
+import type { OrderStatus } from "../../types/order.types";
 
 // Status → MUI color mapping
-const ORDER_STATUS_COLOR: Record<OrderStatus,'default' | 'warning' | 'info' | 'success' | 'error'> = {
-  pending:   'warning',
-  paid:      'info',
-  shipped:   'info',
-  delivered: 'success',
-  cancelled: 'error',
+const ORDER_STATUS_COLOR: Record<
+  OrderStatus,
+  "default" | "warning" | "info" | "success" | "error"
+> = {
+  pending: "warning",
+  paid: "info",
+  shipped: "info",
+  delivered: "success",
+  cancelled: "error",
 };
 
-const ROLE_COLOR: Record<Profile['role'], 'default' | 'primary' | 'error'> = {
-  customer: 'default',
-  vendor:   'primary',
-  admin:    'error',
+const ROLE_COLOR: Record<Profile["role"], "default" | "primary" | "error"> = {
+  customer: "default",
+  vendor: "primary",
+  admin: "error",
 };
 
 export default function AdminDashboardPage() {
   const [tab, setTab] = useState(0);
 
   // ── Data ──────────────────────────────────────────────────────
-  const { data: profiles,  isLoading: profilesLoading,  isError: profilesError  } = useAllProfiles();
-  const { data: products,  isLoading: productsLoading,  isError: productsError  } = useProducts({});
-  const { data: orders,    isLoading: ordersLoading,    isError: ordersError    } = useAllOrders();
+  const {
+    data: profiles,
+    isLoading: profilesLoading,
+    isError: profilesError,
+  } = useAllProfiles();
+  const {
+    data: products,
+    isLoading: productsLoading,
+    isError: productsError,
+  } = useProducts({});
+  const {
+    data: orders,
+    isLoading: ordersLoading,
+    isError: ordersError,
+  } = useAllOrders();
   const updateVendorStatus = useUpdateVendorStatus();
 
   // Derived — computed from profiles, not a separate query
   const pendingVendors = profiles?.filter(
-    (p) => p.role === 'vendor' && p.vendor_status === 'pending'
+    (p) => p.role === "vendor" && p.vendor_status === "pending",
   );
+
+  const updateOrderStatus = useUpdateOrderStatus();
 
   return (
     <Container sx={{ mt: 4, mb: 8 }}>
@@ -48,9 +78,11 @@ export default function AdminDashboardPage() {
       <Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}
-        sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}
+        sx={{ mb: 3, borderBottom: "1px solid", borderColor: "divider" }}
       >
-        <Tab label={`Vendor approvals ${pendingVendors?.length ? `(${pendingVendors.length})` : ''}`} />
+        <Tab
+          label={`Vendor approvals ${pendingVendors?.length ? `(${pendingVendors.length})` : ""}`}
+        />
         <Tab label="Users" />
         <Tab label="Products" />
         <Tab label="Orders" />
@@ -60,7 +92,9 @@ export default function AdminDashboardPage() {
       {tab === 0 && (
         <>
           {profilesLoading && <CircularProgress />}
-          {profilesError  && <Alert severity="error">Failed to load profiles.</Alert>}
+          {profilesError && (
+            <Alert severity="error">Failed to load profiles.</Alert>
+          )}
 
           {!profilesLoading && pendingVendors?.length === 0 && (
             <Typography color="text.secondary" sx={{ mt: 2 }}>
@@ -81,7 +115,7 @@ export default function AdminDashboardPage() {
               <TableBody>
                 {pendingVendors.map((v) => (
                   <TableRow key={v.id}>
-                    <TableCell>{v.full_name ?? '—'}</TableCell>
+                    <TableCell>{v.full_name ?? "—"}</TableCell>
                     <TableCell>{v.email}</TableCell>
                     <TableCell>
                       {new Date(v.created_at).toLocaleDateString()}
@@ -94,7 +128,10 @@ export default function AdminDashboardPage() {
                           color="success"
                           disabled={updateVendorStatus.isPending}
                           onClick={() =>
-                            updateVendorStatus.mutate({ id: v.id, status: 'approved' })
+                            updateVendorStatus.mutate({
+                              id: v.id,
+                              status: "approved",
+                            })
                           }
                         >
                           Approve
@@ -105,7 +142,10 @@ export default function AdminDashboardPage() {
                           color="error"
                           disabled={updateVendorStatus.isPending}
                           onClick={() =>
-                            updateVendorStatus.mutate({ id: v.id, status: 'rejected' })
+                            updateVendorStatus.mutate({
+                              id: v.id,
+                              status: "rejected",
+                            })
                           }
                         >
                           Reject
@@ -124,7 +164,9 @@ export default function AdminDashboardPage() {
       {tab === 1 && (
         <>
           {profilesLoading && <CircularProgress />}
-          {profilesError  && <Alert severity="error">Failed to load users.</Alert>}
+          {profilesError && (
+            <Alert severity="error">Failed to load users.</Alert>
+          )}
           <Table>
             <TableHead>
               <TableRow>
@@ -138,13 +180,13 @@ export default function AdminDashboardPage() {
             <TableBody>
               {profiles?.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell>{p.full_name ?? '—'}</TableCell>
+                  <TableCell>{p.full_name ?? "—"}</TableCell>
                   <TableCell>{p.email}</TableCell>
                   <TableCell>
                     <Chip
                       size="small"
                       label={p.role}
-                      color={ROLE_COLOR[p.role as Profile['role']] ?? 'default'}
+                      color={ROLE_COLOR[p.role as Profile["role"]] ?? "default"}
                     />
                   </TableCell>
                   <TableCell>
@@ -153,12 +195,16 @@ export default function AdminDashboardPage() {
                         size="small"
                         label={p.vendor_status}
                         color={
-                          p.vendor_status === 'approved' ? 'success'
-                          : p.vendor_status === 'rejected' ? 'error'
-                          : 'warning'
+                          p.vendor_status === "approved"
+                            ? "success"
+                            : p.vendor_status === "rejected"
+                              ? "error"
+                              : "warning"
                         }
                       />
-                    ) : '—'}
+                    ) : (
+                      "—"
+                    )}
                   </TableCell>
                   <TableCell>
                     {new Date(p.created_at).toLocaleDateString()}
@@ -174,7 +220,9 @@ export default function AdminDashboardPage() {
       {tab === 2 && (
         <>
           {productsLoading && <CircularProgress />}
-          {productsError  && <Alert severity="error">Failed to load products.</Alert>}
+          {productsError && (
+            <Alert severity="error">Failed to load products.</Alert>
+          )}
           <Table>
             <TableHead>
               <TableRow>
@@ -188,16 +236,18 @@ export default function AdminDashboardPage() {
               {products?.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>{p.title}</TableCell>
-                  <TableCell>₹{p.price.toLocaleString('en-IN')}</TableCell>
+                  <TableCell>₹{p.price.toLocaleString("en-IN")}</TableCell>
                   <TableCell>{p.stock}</TableCell>
                   <TableCell>
                     <Chip
                       size="small"
                       label={p.status}
                       color={
-                        p.status === 'active'   ? 'success'
-                        : p.status === 'draft'  ? 'warning'
-                        : 'default'
+                        p.status === "active"
+                          ? "success"
+                          : p.status === "draft"
+                            ? "warning"
+                            : "default"
                       }
                     />
                   </TableCell>
@@ -212,7 +262,9 @@ export default function AdminDashboardPage() {
       {tab === 3 && (
         <>
           {ordersLoading && <CircularProgress />}
-          {ordersError  && <Alert severity="error">Failed to load orders.</Alert>}
+          {ordersError && (
+            <Alert severity="error">Failed to load orders.</Alert>
+          )}
           <Table>
             <TableHead>
               <TableRow>
@@ -225,16 +277,55 @@ export default function AdminDashboardPage() {
             <TableBody>
               {orders?.map((o) => (
                 <TableRow key={o.id}>
-                  <TableCell sx={{ fontFamily: 'monospace' }}>
+                  <TableCell sx={{ fontFamily: "monospace" }}>
                     #{o.id.slice(0, 8).toUpperCase()}
                   </TableCell>
-                  <TableCell>₹{o.total_amount.toLocaleString('en-IN')}</TableCell>
                   <TableCell>
-                    <Chip
+                    ₹{o.total_amount.toLocaleString("en-IN")}
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      select
                       size="small"
-                      label={o.status}
-                      color={ORDER_STATUS_COLOR[o.status as OrderStatus] ?? 'default'}
-                    />
+                      value={o.status}
+                      onChange={(e) =>
+                        updateOrderStatus.mutate({
+                          orderId: o.id,
+                          status: e.target.value as OrderStatus,
+                        })
+                      }
+                      sx={{ minWidth: 130 }}
+                      SelectProps={{ sx: { fontSize: 13 } }}
+                    >
+                      {(
+                        [
+                          "pending",
+                          "paid",
+                          "shipped",
+                          "delivered",
+                          "cancelled",
+                        ] as OrderStatus[]
+                      ).map((s) => (
+                        <MenuItem key={s} value={s}>
+                          <Chip
+                            label={s}
+                            size="small"
+                            color={
+                              s === "delivered"
+                                ? "success"
+                                : s === "cancelled"
+                                  ? "error"
+                                  : s === "shipped"
+                                    ? "info"
+                                    : s === "paid"
+                                      ? "primary"
+                                      : "warning"
+                            }
+                            sx={{ cursor: "pointer", width: "100%" }}
+                          />
+                        </MenuItem>
+                      ))}
+                    </TextField>
                   </TableCell>
                   <TableCell>
                     {new Date(o.created_at).toLocaleDateString()}
