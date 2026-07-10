@@ -14,9 +14,9 @@ import {
   Alert,
   Stack,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import { Close as CloseIcon } from "@mui/icons-material";
+import { DeleteOutline as DeleteOutlineIcon } from "@mui/icons-material";
+import { AddPhotoAlternate as AddPhotoAlternateIcon } from "@mui/icons-material";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -37,6 +37,7 @@ type FormInput = z.input<typeof schema>;
 type FormData = z.output<typeof schema>;
 
 interface ProductFormDialogProps {
+  key: string; // force remount when product changes
   open: boolean;
   onClose: () => void;
   vendorId: string;

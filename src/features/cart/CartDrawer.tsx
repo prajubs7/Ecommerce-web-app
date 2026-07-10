@@ -8,8 +8,8 @@ import {
   Stack,
   TextField,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import { Close as CloseIcon } from "@mui/icons-material";
+import { DeleteOutline as DeleteOutlineIcon } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { setCartDrawerOpen } from '../../store/uiSlice';
