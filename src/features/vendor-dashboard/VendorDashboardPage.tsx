@@ -174,6 +174,7 @@ export default function VendorDashboardPage() {
 
       {vendorId && (
         <ProductFormDialog
+          key={editingProduct?.id ?? 'new'}
           open={formOpen}
           onClose={() => setFormOpen(false)}
           vendorId={vendorId}

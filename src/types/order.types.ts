@@ -1,3 +1,5 @@
+import type { ProductStatus } from "./product.types";
+
 export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
 
 export interface Order {
@@ -27,4 +29,40 @@ export interface PlaceOrderInput {
     quantity: number;
   }[];
   shippingAddress: Record<string, unknown>;
+}
+// types/order.types.ts
+
+export interface OrderItemWithProduct {
+  id: string;
+  order_id: string;
+  product_id: string;
+  vendor_id: string;
+  quantity: number;
+  unit_price: number;
+  products: {
+    id: string;
+    title: string;
+    description: string | null;
+    price: number;
+    stock: number;
+    images: string[];
+    status: ProductStatus;
+    metadata: Record<string, unknown>;
+   
+  } | null;             
+}
+
+export interface OrderWithItems {
+  id: string;
+  customer_id: string;
+  status: OrderStatus;
+  total_amount: number;
+  created_at: string;
+  shipping_address: {
+    city: string;
+    line1: string;
+    state: string;
+    postalCode: string;
+  };
+  order_items: OrderItemWithProduct[];
 }
