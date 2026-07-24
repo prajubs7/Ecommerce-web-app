@@ -24,21 +24,23 @@ export function useCustomerOrders(customerId: string | undefined) {
 }
 
 // Vendor: order_items belonging to them, joined back to parent order info.
-export function useVendorOrders(vendorId: string | undefined) {
-  return useQuery({
-    queryKey: [ORDERS_KEY, 'vendor', vendorId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('order_items')
-        .select('*, orders(*)')
-        .eq('vendor_id', vendorId!)
-        .order('order_id', { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!vendorId,
-  });
-}
+// export function useVendorOrders(vendorId: string | undefined) {
+//   return useQuery({
+//     queryKey: [ORDERS_KEY, 'vendor', vendorId],
+//     queryFn: async () => {
+//       const { data, error } = await supabase
+//         .from('order_items')
+//         .select('*, orders!inner(*), products(*)')
+//         .eq('vendor_id', vendorId!)
+//         //.eq('orders.status', 'delivered') // adjust to whatever your "completed" status value is
+//         .order('order_id', { ascending: false });
+
+//       if (error) throw error;
+//       return data;
+//     },
+//     enabled: !!vendorId,
+//   });
+// }
 
 // Admin: all orders, no scoping (RLS allows this only for role = 'admin').
 export function useAllOrders() {

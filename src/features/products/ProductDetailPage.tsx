@@ -38,6 +38,7 @@ export default function ProductDetailPage() {
   }
 
   const handleAddToCart = () => {
+    console.log('Adding to cart:', product);
     dispatch(
       addItem({
         productId: product.id,

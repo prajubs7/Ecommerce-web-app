@@ -45,21 +45,9 @@ export default function AdminDashboardPage() {
   const [tab, setTab] = useState(0);
 
   // ── Data ──────────────────────────────────────────────────────
-  const {
-    data: profiles,
-    isLoading: profilesLoading,
-    isError: profilesError,
-  } = useAllProfiles();
-  const {
-    data: products,
-    isLoading: productsLoading,
-    isError: productsError,
-  } = useProducts({});
-  const {
-    data: orders,
-    isLoading: ordersLoading,
-    isError: ordersError,
-  } = useAllOrders();
+  const { data: profiles, isLoading: profilesLoading, isError: profilesError,} = useAllProfiles();
+  const { data: products, isLoading: productsLoading, isError: productsError,} = useProducts({});
+  const { data: orders, isLoading: ordersLoading, isError: ordersError,} = useAllOrders();
   const updateVendorStatus = useUpdateVendorStatus();
 
   // Derived — computed from profiles, not a separate query
@@ -67,7 +55,8 @@ export default function AdminDashboardPage() {
     (p) => p.role === "vendor" && p.vendor_status === "pending",
   );
 
-  const updateOrderStatus = useUpdateOrderStatus();
+
+  console.log("AdminDashboardPage: profiles, products, orders", {profiles, products, orders, pendingVendors,});
 
   return (
     <Container sx={{ mt: 4, mb: 8 }}>
@@ -284,48 +273,7 @@ export default function AdminDashboardPage() {
                     ₹{o.total_amount.toLocaleString("en-IN")}
                   </TableCell>
                   <TableCell>
-                    <TextField
-                      select
-                      size="small"
-                      value={o.status}
-                      onChange={(e) =>
-                        updateOrderStatus.mutate({
-                          orderId: o.id,
-                          status: e.target.value as OrderStatus,
-                        })
-                      }
-                      sx={{ minWidth: 130 }}
-                      SelectProps={{ sx: { fontSize: 13 } }}
-                    >
-                      {(
-                        [
-                          "pending",
-                          "paid",
-                          "shipped",
-                          "delivered",
-                          "cancelled",
-                        ] as OrderStatus[]
-                      ).map((s) => (
-                        <MenuItem key={s} value={s}>
-                          <Chip
-                            label={s}
-                            size="small"
-                            color={
-                              s === "delivered"
-                                ? "success"
-                                : s === "cancelled"
-                                  ? "error"
-                                  : s === "shipped"
-                                    ? "info"
-                                    : s === "paid"
-                                      ? "primary"
-                                      : "warning"
-                            }
-                            sx={{ cursor: "pointer", width: "100%" }}
-                          />
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                    {o.status}
                   </TableCell>
                   <TableCell>
                     {new Date(o.created_at).toLocaleDateString()}

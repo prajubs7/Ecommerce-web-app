@@ -1,25 +1,31 @@
-import { supabase } from '../api/supabaseClient';
-import type { Order, OrderItem, PlaceOrderInput } from '../types/order.types';
+import { supabase } from "../api/supabaseClient";
+import type {
+  Order,
+  OrderItem,
+  OrderWithItems,
+  PlaceOrderInput,
+} from "../types/order.types";
 
 export class OrderService {
+ 
 
-  static async getByCustomer(customerId: string): Promise<Order[]> {
+ static async getByCustomer(customerId: string): Promise<OrderWithItems[]> {
     const { data, error } = await supabase
-      .from('orders')
-      .select('*, order_items(*)')
-      .eq('customer_id', customerId)
-      .order('created_at', { ascending: false });
+      .from("orders")
+      .select("*, order_items(*, products(*))")
+      .eq("customer_id", customerId)
+      .order("created_at", { ascending: false });
 
     if (error) throw new Error(`OrderService.getByCustomer: ${error.message}`);
-    return data as Order[];
+    return data as OrderWithItems[];
   }
 
   static async getByVendor(vendorId: string): Promise<OrderItem[]> {
     const { data, error } = await supabase
-      .from('order_items')
-      .select('*, orders(*)')
-      .eq('vendor_id', vendorId)
-      .order('order_id', { ascending: false });
+      .from("order_items")
+      .select("*, orders(*)")
+      .eq("vendor_id", vendorId)
+      .order("order_id", { ascending: false });
 
     if (error) throw new Error(`OrderService.getByVendor: ${error.message}`);
     return data as OrderItem[];
@@ -27,9 +33,9 @@ export class OrderService {
 
   static async getAll(): Promise<Order[]> {
     const { data, error } = await supabase
-      .from('orders')
-      .select('*, order_items(*)')
-      .order('created_at', { ascending: false });
+      .from("orders")
+      .select("*, order_items(*)")
+      .order("created_at", { ascending: false });
 
     if (error) throw new Error(`OrderService.getAll: ${error.message}`);
     return data as Order[];
@@ -50,21 +56,22 @@ export class OrderService {
   static async place(input: PlaceOrderInput): Promise<Order> {
     const totalAmount = input.items.reduce(
       (sum, item) => sum + item.price * item.quantity,
-      0
+      0,
     );
 
     const { data: order, error: orderError } = await supabase
-      .from('orders')
+      .from("orders")
       .insert({
         customer_id: input.customerId,
-        status: 'pending',
+        status: "pending",
         total_amount: totalAmount,
         shipping_address: input.shippingAddress,
       })
       .select()
       .single();
 
-    if (orderError) throw new Error(`OrderService.place (order): ${orderError.message}`);
+    if (orderError)
+      throw new Error(`OrderService.place (order): ${orderError.message}`);
 
     const orderItems = input.items.map((item) => ({
       order_id: (order as Order).id,
@@ -75,22 +82,23 @@ export class OrderService {
     }));
 
     const { error: itemsError } = await supabase
-      .from('order_items')
+      .from("order_items")
       .insert(orderItems);
 
-    if (itemsError) throw new Error(`OrderService.place (items): ${itemsError.message}`);
+    if (itemsError)
+      throw new Error(`OrderService.place (items): ${itemsError.message}`);
 
     return order as Order;
   }
 
   static async updateStatus(
     orderId: string,
-    status: Order['status']
+    status: Order["status"],
   ): Promise<Order> {
     const { data, error } = await supabase
-      .from('orders')
+      .from("orders")
       .update({ status })
-      .eq('id', orderId)
+      .eq("id", orderId)
       .select()
       .single();
 
