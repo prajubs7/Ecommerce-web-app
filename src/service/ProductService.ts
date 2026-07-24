@@ -177,4 +177,22 @@ export class ProductService {
 
     if (error) throw new Error(`ProductService.delete: ${error.message}`);
   }
+
+static async generateEmbedding(productId: string): Promise<void> {
+  /**
+   * Calls the Edge Function to generate and store the embedding.
+   * Fire-and-forget — we don't block the UI waiting for OpenAI.
+   * If it fails, the product still works, just won't appear in
+   * semantic search until embedding is generated.
+   */
+  const { error } = await supabase.functions.invoke('generate-embedding', {
+    body: { productId },
+  });
+
+  if (error) {
+    // Log but don't throw — embedding failure shouldn't break product creation
+    console.warn(`Embedding generation failed for ${productId}:`, error);
+  }
 }
+}
+
