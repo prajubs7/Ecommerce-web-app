@@ -60,7 +60,7 @@ export default function Navbar() {
             Admin
           </Button>
         )}
-        {userId && (
+        {userId && profile?.role === "customer" && (
           <Button component={RouterLink} to="/orders">
             Orders
           </Button>
