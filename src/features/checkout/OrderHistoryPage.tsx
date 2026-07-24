@@ -42,7 +42,7 @@ export default function OrderHistoryPage() {
       {isLoading && (
         <Box display="flex" justifyContent="center" mt={6}>
           <CircularProgress />
-        </Box>
+        </Box> 
       )}
       {isError && <Alert severity="error">Couldn't load your orders.</Alert>}
       {!isLoading && orders?.length === 0 && (
