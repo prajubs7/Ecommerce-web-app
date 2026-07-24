@@ -56,6 +56,8 @@ export default function AdminDashboardPage() {
   );
 
 
+  console.log("AdminDashboardPage: profiles, products, orders", {profiles, products, orders, pendingVendors,});
+
   return (
     <Container sx={{ mt: 4, mb: 8 }}>
       <Typography variant="h4" fontWeight={700} gutterBottom>
